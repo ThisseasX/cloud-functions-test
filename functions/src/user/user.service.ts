@@ -1,128 +1,130 @@
 import { Request, Response } from 'express';
 import * as admin from 'firebase-admin';
 import { isUser } from './user';
+import { respond } from '../utils';
 
-const userRef = admin.firestore().collection('users');
+const usersRef = admin.firestore().collection('users');
 
 const getAllUsers = async (req: Request, res: Response) => {
   try {
-    const data = await userRef.get();
+    const collection = await usersRef.get();
+    const docs = collection.docs.map(doc => doc.data());
 
-    res.json({
-      success: true,
-      data: data.docs.map(item => item.data()),
-    });
+    respond(res, docs);
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    respond(res, err.message, 500);
   }
 };
 
 const getUserById = async (req: Request, res: Response) => {
   const id = req.params.id;
 
-  try {
-    const data = await userRef.doc(id).get();
+  if (!id) {
+    respond(res, 'ID parameter required', 400);
+    return;
+  }
 
-    res.json({
-      success: true,
-      data: data.data(),
-    });
+  try {
+    const doc = await usersRef.doc(id).get();
+
+    if (!doc.exists) {
+      respond(res, `User with id: ${id} does not exist`, 404);
+      return;
+    }
+
+    respond(res, doc.data());
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    respond(res, err.message, 500);
   }
 };
 
 const getUserByName = async (req: Request, res: Response) => {
   const name = req.params.name;
 
+  if (!name) {
+    respond(res, 'Name parameter required', 400);
+    return;
+  }
+
   try {
-    const data = await userRef
+    const result = await usersRef
       .where('name', '==', name)
       .limit(1)
       .get();
 
-    res.json({
-      success: true,
-      data: data.docs.map(item => item.data())[0],
-    });
+    const data = result.docs[0].data();
+
+    respond(res, data);
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    respond(res, err.message, 500);
   }
 };
 
 const addUser = async (req: Request, res: Response) => {
   if (!isUser(req.body)) {
-    res.status(400).json({
-      success: false,
-      message: 'Bad Request',
-    });
+    respond(res, 'Bad Request', 400);
     return;
   }
 
   try {
-    await userRef.doc().set(req.body);
+    await usersRef.doc().create(req.body);
 
-    res.json({
-      success: true,
-      data: req.body,
-    });
+    respond(res, req.body);
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    respond(res, err.message, 500);
   }
 };
 
 const deleteUserById = async (req: Request, res: Response) => {
   const id = req.params.id;
 
+  if (!id) {
+    respond(res, 'ID parameter required', 400);
+    return;
+  }
+
   try {
-    const a = await userRef.doc(id).delete();
+    const doc = await usersRef.doc(id).get();
 
-    console.log(a);
+    if (!doc.exists) {
+      respond(res, `User with id: ${id} does not exist`, 404);
+      return;
+    }
 
-    res.json({
-      success: true,
-      data: id,
-    });
+    await doc.ref.delete();
+
+    respond(res, doc.data());
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    respond(res, err.message, 500);
   }
 };
 
 const deleteUserByName = async (req: Request, res: Response) => {
   const name = req.params.name;
 
+  if (!name) {
+    respond(res, 'Name parameter required', 400);
+    return;
+  }
+
   try {
-    const data = await userRef
+    const result = await usersRef
       .where('name', '==', name)
       .limit(1)
       .get();
 
-    await data.docs[0].ref.delete();
+    if (result.empty) {
+      respond(res, `User with name: ${name} does not exist`);
+      return;
+    }
 
-    res.json({
-      success: true,
-      data: name,
-    });
+    const doc = result.docs[0];
+
+    await doc.ref.delete();
+
+    respond(res, doc.data());
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    respond(res, err.message, 500);
   }
 };
 
