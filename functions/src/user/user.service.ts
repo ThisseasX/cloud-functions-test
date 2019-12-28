@@ -5,10 +5,15 @@ import { respond } from '../utils';
 
 const usersRef = admin.firestore().collection('users');
 
+const mapDocToUser = (doc: admin.firestore.DocumentSnapshot) => ({
+  id: doc.id,
+  ...doc.data(),
+});
+
 const getAllUsers = async (req: Request, res: Response) => {
   try {
     const collection = await usersRef.get();
-    const docs = collection.docs.map(doc => doc.data());
+    const docs = collection.docs.map(mapDocToUser);
 
     respond(res, docs);
   } catch (err) {
@@ -32,7 +37,9 @@ const getUserById = async (req: Request, res: Response) => {
       return;
     }
 
-    respond(res, doc.data());
+    const data = mapDocToUser(doc);
+
+    respond(res, data);
   } catch (err) {
     respond(res, err.message, 500);
   }
@@ -52,7 +59,7 @@ const getUserByName = async (req: Request, res: Response) => {
       .limit(1)
       .get();
 
-    const data = result.docs[0].data();
+    const data = mapDocToUser(result.docs[0]);
 
     respond(res, data);
   } catch (err) {
@@ -67,9 +74,16 @@ const addUser = async (req: Request, res: Response) => {
   }
 
   try {
-    await usersRef.doc().create(req.body);
+    const doc = usersRef.doc();
 
-    respond(res, req.body);
+    await doc.create(req.body);
+
+    const data = {
+      id: doc.id,
+      ...req.body,
+    };
+
+    respond(res, data);
   } catch (err) {
     respond(res, err.message, 500);
   }
@@ -93,7 +107,9 @@ const deleteUserById = async (req: Request, res: Response) => {
 
     await doc.ref.delete();
 
-    respond(res, doc.data());
+    const data = mapDocToUser(doc);
+
+    respond(res, data);
   } catch (err) {
     respond(res, err.message, 500);
   }
@@ -122,7 +138,9 @@ const deleteUserByName = async (req: Request, res: Response) => {
 
     await doc.ref.delete();
 
-    respond(res, doc.data());
+    const data = mapDocToUser(doc);
+
+    respond(res, data);
   } catch (err) {
     respond(res, err.message, 500);
   }
