@@ -4,4 +4,5 @@ const serviceAccount = require('../serviceAccountKey.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
+  storageBucket: 'firetest-eb60d.appspot.com',
 });
