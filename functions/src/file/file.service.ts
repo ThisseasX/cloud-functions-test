@@ -50,7 +50,7 @@ const uploadFile = (req: any, res: Response) => {
           filename,
           filepath,
           mimetype,
-          success: true,
+          success: false,
         };
       }),
     );
